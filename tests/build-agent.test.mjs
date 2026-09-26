@@ -6,7 +6,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
-import { AgentKitError } from '@agent-tool-platform/agent-kit';
+import {
+  AgentKitError,
+  createPreparationPlan,
+  prepareAgent,
+} from '@agent-tool-platform/agent-kit';
 import {
   createCapabilityRegistryReader,
   loadFirstPartyCapabilityRegistry,
@@ -229,6 +233,113 @@ test('the real two-capability Agent Kit build resolves profiles and bindings', a
   );
 });
 
+test('the Platform 0.4.0 lock preserves canonical capability semantics', async () => {
+  const { first } = await getRepeatedBuilds();
+
+  assert.equal(first.lock.schemaVersion, 2);
+  assert.equal(first.lock.build.registrySchemaVersion, '1.1.0');
+  assert.deepEqual(first.lock.build.adapters, [{ id: 'vscode', schemaVersion: 2 }]);
+  assert.deepEqual(
+    first.lock.capabilities.map((capability) => ({
+      id: capability.id,
+      version: capability.version,
+      profile: capability.profile.id,
+      binding: capability.binding.id,
+      mode: capability.binding.mode,
+      interface: capability.binding.interface,
+      client: capability.binding.client,
+      mutation: capability.profile.dimensions.mutation,
+      artifactKind: capability.artifact.kind,
+      requiredSecretNames: capability.requirements.requiredSecretNames,
+      providerPrerequisiteIds: capability.requirements.providerPrerequisiteIds,
+    })),
+    [
+      {
+        id: 'ast-summarizer',
+        version: '0.1.1',
+        profile: 'local-package',
+        binding: 'local-stdio',
+        mode: 'local',
+        interface: 'stdio',
+        client: null,
+        mutation: 'read-only',
+        artifactKind: 'npm',
+        requiredSecretNames: [],
+        providerPrerequisiteIds: [],
+      },
+      {
+        id: 'git-optimizer',
+        version: '0.1.0',
+        profile: 'local-package',
+        binding: 'local-stdio',
+        mode: 'local',
+        interface: 'stdio',
+        client: null,
+        mutation: 'read-only',
+        artifactKind: 'npm',
+        requiredSecretNames: [],
+        providerPrerequisiteIds: [],
+      },
+    ],
+  );
+});
+
+test('the Platform 0.4.0 Prepare APIs consume the canonical Build output', async () => {
+  const { first } = await getRepeatedBuilds();
+  const options = {
+    environmentId: 'synthetic-local-test',
+    readinessSnapshot: {
+      schemaVersion: 1,
+      availableLocalBindings: [
+        'ast-summarizer@0.1.1#local-package',
+        'git-optimizer@0.1.0#local-package',
+      ],
+    },
+    hostIntegration: 'available',
+  };
+
+  const plan = createPreparationPlan(first, options);
+  assert.deepEqual(plan, createPreparationPlan(first, options));
+  assert.equal(plan.agentDefinition.id, 'repository-context');
+  assert.equal(plan.agentDefinition.version, '1.0.0');
+  assert.equal(plan.build.lockDigest, first.lockDigest);
+  assert.deepEqual(
+    plan.actions.map((action) => action.kind).sort(),
+    ['prepare-host-integration', 'verify-local-artifact', 'verify-local-artifact'],
+  );
+  assert.deepEqual(
+    plan.actions
+      .find((action) => action.kind === 'prepare-host-integration')
+      ?.files.map((file) => file.path),
+    ['.github/agents/repository-context.agent.md', '.vscode/mcp.json'],
+  );
+
+  const prepared = await prepareAgent(first, {
+    ...options,
+    clock: { now: () => new Date('2026-01-01T00:00:00.000Z') },
+  });
+
+  assert.deepEqual(prepared.plan, plan);
+  assert.equal(prepared.runnable, true);
+  assert.equal(prepared.disposition, 'created');
+  assert.deepEqual(prepared.setupRequirements, []);
+  assert.ok(prepared.actionResults.every((result) => result.status === 'already-ready'));
+  assert.equal(prepared.instance.environmentId, options.environmentId);
+  assert.equal(prepared.instance.preparedAt, '2026-01-01T00:00:00.000Z');
+  assert.equal(prepared.instance.state, 'READY');
+  assert.deepEqual(
+    prepared.instance.bindings.map((binding) => ({
+      capabilityId: binding.capabilityId,
+      readiness: binding.readiness,
+      state: binding.state,
+    })),
+    [
+      { capabilityId: 'ast-summarizer', readiness: 'available-local', state: 'READY' },
+      { capabilityId: 'git-optimizer', readiness: 'available-local', state: 'READY' },
+    ],
+  );
+});
+
 test('agent.lock is byte-identical across repeated builds', async () => {
   const { first, second } = await getRepeatedBuilds();
   assert.equal(first.lockText, second.lockText);
@@ -300,8 +411,8 @@ test('Platform dependencies use exact registry versions and no local protocols',
   );
 
   assert.deepEqual(platformDependencies, [
-    ['@agent-tool-platform/agent-kit', '0.2.0'],
-    ['@agent-tool-platform/capability-registry', '0.2.0'],
+    ['@agent-tool-platform/agent-kit', '0.4.0'],
+    ['@agent-tool-platform/capability-registry', '0.4.0'],
   ]);
   assert.equal(manifest.dependencies['@agent-tool-platform/runtime'], undefined);
   for (const [, version] of platformDependencies) {
@@ -316,13 +427,13 @@ test('package-lock pins exact public Platform packages and Agent Kit dependencie
   const registry = packages['node_modules/@agent-tool-platform/capability-registry'];
   const runtime = packages['node_modules/@agent-tool-platform/runtime'];
 
-  assert.equal(packages[''].dependencies['@agent-tool-platform/agent-kit'], '0.2.0');
-  assert.equal(packages[''].dependencies['@agent-tool-platform/capability-registry'], '0.2.0');
-  assert.equal(agentKit.version, '0.2.0');
-  assert.equal(agentKit.dependencies['@agent-tool-platform/runtime'], '0.2.0');
-  assert.equal(agentKit.dependencies['@agent-tool-platform/capability-registry'], '0.2.0');
-  assert.equal(registry.version, '0.2.0');
-  assert.equal(runtime.version, '0.2.0');
+  assert.equal(packages[''].dependencies['@agent-tool-platform/agent-kit'], '0.4.0');
+  assert.equal(packages[''].dependencies['@agent-tool-platform/capability-registry'], '0.4.0');
+  assert.equal(agentKit.version, '0.4.0');
+  assert.equal(agentKit.dependencies['@agent-tool-platform/runtime'], '0.4.0');
+  assert.equal(agentKit.dependencies['@agent-tool-platform/capability-registry'], '0.4.0');
+  assert.equal(registry.version, '0.4.0');
+  assert.equal(runtime.version, '0.4.0');
 
   for (const [packagePath, metadata] of Object.entries(packages)) {
     if (packagePath.includes('node_modules/@agent-tool-platform/')) {
