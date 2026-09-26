@@ -8,10 +8,10 @@
     "adapters": [
       {
         "id": "vscode",
-        "schemaVersion": 1
+        "schemaVersion": 2
       }
     ],
-    "registrySchemaVersion": "1.0.0",
+    "registrySchemaVersion": "1.1.0",
     "schemaVersion": 1
   },
   "capabilities": [
@@ -26,6 +26,7 @@
         "version": "0.1.1"
       },
       "binding": {
+        "client": null,
         "id": "local-stdio",
         "interface": "stdio",
         "mode": "local"
@@ -43,7 +44,7 @@
         "id": "local-package",
         "source": "registry-curated"
       },
-      "registryEntryDigest": "sha256:5b6107fa92e2f49844ca144725f08fb45554c0c8d01bf765c58bc8bfed8be523",
+      "registryEntryDigest": "sha256:7e96ae1159fbe1faa039c432901b711f8e702abac6a1550866576157c9147f1c",
       "requestedVersion": null,
       "requirements": {
         "permissions": [
@@ -75,6 +76,7 @@
         "version": "0.1.0"
       },
       "binding": {
+        "client": null,
         "id": "local-stdio",
         "interface": "stdio",
         "mode": "local"
@@ -92,7 +94,7 @@
         "id": "local-package",
         "source": "capability-profile-declaration"
       },
-      "registryEntryDigest": "sha256:18ce753d7a4e70f39f4bea958d7d684cd8ba31c3326b6d538eb21f9e2bf82b7b",
+      "registryEntryDigest": "sha256:f9993b088a3001443ff7acc3be031c32f448ec3f3b18255d1768fa2ba3678023",
       "requestedVersion": null,
       "requirements": {
         "permissions": [
@@ -116,5 +118,5 @@
     }
   ],
   "kind": "agent-lock",
-  "schemaVersion": 1
+  "schemaVersion": 2
 }

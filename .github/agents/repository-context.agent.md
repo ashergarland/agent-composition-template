@@ -5,7 +5,7 @@ tools: ["ast-summarizer/*","git-optimizer/*"]
 target: vscode
 ---
 
-<!-- agent.lock sha256:ea3c4ca9004b22f4d5b78c265fb802b67d54337308b73bf503fd63f80d5d84ba -->
+<!-- agent.lock sha256:b781dbc921badb37f1fd09ce424bca0fb2d29a91bc9873200d0bf74bd7b5607e -->
 
 # Agent Instructions
 

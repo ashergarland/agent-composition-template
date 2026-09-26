@@ -3,8 +3,8 @@
 A small, reusable repository for composing one canonical agent from published
 [Agent Tool Platform](https://github.com/ashergarland/agent-tool-platform) packages.
 It turns human-edited agent source into a deterministic Agent Kit lock and VS Code host adapter.
-It does not execute capabilities, prepare environments, deploy providers, or manage agent
-instances.
+It does not execute capabilities, own environment preparation or provider setup, deploy anything,
+persist Agent Instance state, or manage agents.
 
 This repository is intended to become a GitHub template after implementation and independent
 review. The future flow is:
@@ -81,9 +81,10 @@ npm run agent:check
 
 The build reads `agent.yaml` and its instruction file, constructs the canonical Agent Kit
 `AgentDefinition`, loads the published first-party Registry, and calls `buildVsCodeAgent()`.
-Agent Kit remains authoritative for definition validation, capability resolution, lock semantics,
-readiness semantics, and adapter generation. The YAML layer only represents the instruction file
-as a repository-relative source reference.
+Build remains the canonical composition-generation step. Agent Kit remains authoritative for
+definition validation, capability resolution, lock semantics, readiness semantics, and adapter
+generation. The YAML layer only represents the instruction file as a repository-relative source
+reference.
 
 `agent:build` writes all generated outputs and reports Agent Kit's derived readiness states without
 installing capability artifacts or changing the environment. `agent:check` computes the same
@@ -96,9 +97,9 @@ network registry.
 
 ## Platform versions and upgrades
 
-The template pins `@agent-tool-platform/agent-kit` and
-`@agent-tool-platform/capability-registry` to exact versions. Runtime is not a direct dependency;
-Agent Kit carries its exact Runtime dependency.
+The template pins `@agent-tool-platform/agent-kit@0.4.0` and
+`@agent-tool-platform/capability-registry@0.4.0` as exact direct dependencies. Runtime is not a
+direct dependency; Agent Kit carries `@agent-tool-platform/runtime@0.4.0` transitively.
 
 Perform an intentional lockstep Platform upgrade explicitly:
 
@@ -116,8 +117,12 @@ consumer proof.
 
 ## Lifecycle boundary
 
-This template covers canonical agent source through lock and host-adapter generation. Readiness is
-an Agent Kit plan describing later setup requirements; it is not Prepare and is not a liveness
-probe. Capability installation, MCP process startup, provider authentication, cloud resources,
-deployment, Agent Instance lifecycle, fleet management, and telemetry belong to later lifecycle
-stages or other Platform components.
+This template covers canonical agent source through Agent Kit Build, lock, and host-adapter
+generation. Platform 0.4.0 also provides public `createPreparationPlan()`, `prepareAgent()`, and
+Agent Instance APIs for downstream consumers. The template verifies that its Build output is
+accepted by those APIs using synthetic readiness evidence, but it is not itself a Prepare
+implementation and creates no persistent Agent Instance state.
+
+Capability installation, MCP process startup, provider authentication and setup, cloud resources,
+deployment, Agent Instance persistence and management, fleet management, and telemetry remain
+outside this template.
